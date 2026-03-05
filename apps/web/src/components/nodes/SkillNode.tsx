@@ -8,7 +8,7 @@ import {
   type NodeProps,
   type Node,
 } from "@xyflow/react";
-import { Globe, Terminal, Webhook } from "lucide-react";
+import { Globe, GripVertical, Terminal, Webhook } from "lucide-react";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { SkillNodeData, NodeType } from "@/types/skill";
 
@@ -74,15 +74,20 @@ function SkillNodeComponent(props: NodeProps<SkillFlowNode>) {
       className={`rounded-lg bg-zinc-900/95 backdrop-blur border-2 ${style.border} transition-shadow duration-300 ${selected ? style.glow : ""} ${isSimulationActive ? "shadow-[0_0_20px_rgba(139,92,246,0.6)] ring-2 ring-violet-400/80 " + style.glow : ""} min-w-[200px] overflow-hidden`}
     >
       <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-zinc-500 !border-zinc-700" />
-      <div
-        className="flex items-center gap-2 px-3 py-2 border-b border-zinc-700/50 cursor-pointer nodrag"
-        onClick={() => setIsExpanded((e) => !e)}
-      >
-        <Icon className="w-4 h-4 text-zinc-400 shrink-0" />
-        <span className="text-sm font-medium text-zinc-200 truncate">
-          {label || data.type}
-        </span>
-        <span className="text-xs text-zinc-500 ml-auto">{data.type}</span>
+      <div className="flex items-center gap-1">
+        <div className="flex items-center py-2 pl-1.5 pr-1 text-zinc-500 cursor-grab active:cursor-grabbing" title="Drag to move">
+          <GripVertical className="w-4 h-4" />
+        </div>
+        <div
+          className="flex items-center gap-2 flex-1 px-2 py-2 border-b border-zinc-700/50 cursor-pointer nodrag min-w-0"
+          onClick={() => setIsExpanded((e) => !e)}
+        >
+          <Icon className="w-4 h-4 text-zinc-400 shrink-0" />
+          <span className="text-sm font-medium text-zinc-200 truncate">
+            {label || data.type}
+          </span>
+          <span className="text-xs text-zinc-500 ml-auto shrink-0">{data.type}</span>
+        </div>
       </div>
       {isExpanded && (
         <div className="p-3 space-y-2 border-t border-zinc-700/50 nodrag">

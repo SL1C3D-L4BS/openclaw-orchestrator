@@ -1,3 +1,6 @@
+import type { WorkflowStep } from "@/lib/workflow";
+import { defaultWorkflowFromSkillType } from "@/lib/workflow";
+
 export interface CommunitySkill {
   id: string;
   name: string;
@@ -5,14 +8,75 @@ export interface CommunitySkill {
   signedBy: "Vericore" | null;
   type: string;
   description?: string;
+  /** Prebuilt workflow steps (nodes in order). If omitted, derived from type + name. */
+  workflow?: WorkflowStep[];
+}
+
+/** Returns the prebuilt workflow for a skill (explicit or derived). */
+export function getSkillWorkflow(skill: CommunitySkill): WorkflowStep[] {
+  if (skill.workflow && skill.workflow.length > 0) return skill.workflow;
+  return defaultWorkflowFromSkillType(skill.type, skill.name);
 }
 
 export const COMMUNITY_SKILLS: CommunitySkill[] = [
-  { id: "1", name: "LinkedIn Prospect Scraper", author: "Vericore", signedBy: "Vericore", type: "BROWSER + API", description: "Scrape and enrich LinkedIn prospects with optional CRM sync." },
-  { id: "2", name: "Repo Analyzer", author: "community", signedBy: null, type: "CLI", description: "Analyze repo structure, dependencies, and suggest improvements." },
-  { id: "3", name: "Stripe Invoice Runner", author: "Vericore", signedBy: "Vericore", type: "API", description: "Create, send, and reconcile Stripe invoices automatically." },
-  { id: "4", name: "Slack Notify", author: "community", signedBy: null, type: "API", description: "Send rich notifications and threads to Slack channels." },
-  { id: "5", name: "GitHub PR Workflow", author: "Vericore", signedBy: "Vericore", type: "API + CLI", description: "Open PRs, run checks, and merge with approval rules." },
+  {
+    id: "1",
+    name: "LinkedIn Prospect Scraper",
+    author: "Vericore",
+    signedBy: "Vericore",
+    type: "BROWSER + API",
+    description: "Scrape and enrich LinkedIn prospects with optional CRM sync.",
+    workflow: [
+      { type: "BROWSER", label: "Scrape prospects", config: { url: "https://linkedin.com/sales/search", action: "scrape" } },
+      { type: "API", label: "Enrich & send", config: { endpoint: "/api/enrich", method: "POST" } },
+    ],
+  },
+  {
+    id: "2",
+    name: "Repo Analyzer",
+    author: "community",
+    signedBy: null,
+    type: "CLI",
+    description: "Analyze repo structure, dependencies, and suggest improvements.",
+    workflow: [
+      { type: "CLI", label: "Analyze repo", config: { command: "analyze", args: ["--repo", "."] } },
+    ],
+  },
+  {
+    id: "3",
+    name: "Stripe Invoice Runner",
+    author: "Vericore",
+    signedBy: "Vericore",
+    type: "API",
+    description: "Create, send, and reconcile Stripe invoices automatically.",
+    workflow: [
+      { type: "API", label: "Create invoice", config: { endpoint: "https://api.stripe.com/v1/invoices", method: "POST" } },
+      { type: "API", label: "Send & reconcile", config: { endpoint: "/api/stripe/send", method: "POST" } },
+    ],
+  },
+  {
+    id: "4",
+    name: "Slack Notify",
+    author: "community",
+    signedBy: null,
+    type: "API",
+    description: "Send rich notifications and threads to Slack channels.",
+    workflow: [
+      { type: "API", label: "Send to Slack", config: { endpoint: "https://hooks.slack.com/services/...", method: "POST" } },
+    ],
+  },
+  {
+    id: "5",
+    name: "GitHub PR Workflow",
+    author: "Vericore",
+    signedBy: "Vericore",
+    type: "API + CLI",
+    description: "Open PRs, run checks, and merge with approval rules.",
+    workflow: [
+      { type: "API", label: "Open PR", config: { endpoint: "https://api.github.com/repos/.../pulls", method: "POST" } },
+      { type: "CLI", label: "Run checks", config: { command: "ci", args: [] } },
+    ],
+  },
   { id: "6", name: "Notion Page Sync", author: "Vericore", signedBy: "Vericore", type: "API", description: "Sync content between Notion pages and external sources." },
   { id: "7", name: "Google Sheets ETL", author: "community", signedBy: null, type: "API", description: "Extract, transform, and load data to/from Google Sheets." },
   { id: "8", name: "AWS S3 Backup", author: "Vericore", signedBy: "Vericore", type: "API + CLI", description: "Scheduled backups to S3 with retention and encryption." },

@@ -10,6 +10,8 @@ import OrchestratorCanvas, {
   initialCanvasEdges,
 } from "@/components/OrchestratorCanvas";
 import { SimulationProvider } from "@/contexts/SimulationContext";
+import { getSkillWorkflow, type CommunitySkill } from "@/data/communitySkills";
+import { workflowToReactFlow } from "@/lib/workflow";
 import type { Node, Edge } from "@xyflow/react";
 
 function BuilderContent() {
@@ -25,6 +27,24 @@ function BuilderContent() {
     [setEdges]
   );
 
+  const loadSkillWorkflow = useCallback(
+    (skill: CommunitySkill, position?: { x: number; y: number }) => {
+      const steps = getSkillWorkflow(skill);
+      const { nodes: newNodes, edges: newEdges } = workflowToReactFlow(steps, {
+        idPrefix: `skill-${skill.id}`,
+        offset: position ?? { x: 80, y: 80 },
+      });
+      if (position == null) {
+        setNodes(newNodes);
+        setEdges(newEdges);
+      } else {
+        setNodes((nds) => [...nds, ...newNodes]);
+        setEdges((eds) => [...eds, ...newEdges]);
+      }
+    },
+    [setNodes, setEdges]
+  );
+
   return (
     <SimulationProvider activeNodeId={activeNodeId}>
       <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100">
@@ -38,8 +58,8 @@ function BuilderContent() {
           flowContainerRef={flowContainerRef}
         />
         <div className="flex flex-1 min-h-0">
-          <SkillMarketplace />
-          <div className="flex-1 min-w-0">
+          <SkillMarketplace onLoadWorkflow={loadSkillWorkflow} />
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col" style={{ minHeight: 0 }}>
             <OrchestratorCanvas
               ref={flowContainerRef}
               nodes={nodes}
@@ -47,6 +67,7 @@ function BuilderContent() {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onDropSkill={loadSkillWorkflow}
             />
           </div>
         </div>
