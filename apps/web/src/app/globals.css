@@ -25,3 +25,29 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* Liquid UI: thin dark scrollbars with violet thumb on hover */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #18181b;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+::-webkit-scrollbar-thumb:active {
+  background: #71717a;
+}
+/* Optional: violet accent on focus/hover for main content scroll areas */
+.overflow-y-auto:hover::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #6d28d9;
+}

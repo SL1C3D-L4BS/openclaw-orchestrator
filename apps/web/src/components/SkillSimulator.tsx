@@ -2,10 +2,8 @@
 
 import { useState, useRef, useCallback } from "react";
 import { X, Play, Square, Terminal } from "lucide-react";
-import { getExecutionOrder } from "@/lib/manifest";
+import { buildManifestFromGraph } from "@/lib/manifest";
 import type { Node, Edge } from "@xyflow/react";
-
-const STEP_DELAY_MS = 1200;
 
 export interface LogEntry {
   time: string;
@@ -25,25 +23,32 @@ interface SkillSimulatorProps {
   onSimulationComplete: (success: boolean) => void;
 }
 
+const apiBase =
+  typeof window !== "undefined"
+    ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080")
+    : "http://localhost:8080";
+
 function formatTime() {
   const d = new Date();
   return d.toISOString().split("T")[1]!.slice(0, 12);
 }
 
-function getMockMessage(
-  nodeType: string,
-  config: Record<string, unknown>
+function getNodeLabel(
+  nodeId: string,
+  nodeMap: Map<string, Node<{ id: string; type: string; config?: Record<string, unknown>; label?: string }>>
 ): string {
-  switch (nodeType) {
-    case "BROWSER":
-      return `Navigating to ${(config.url as string) || "..."}`;
-    case "CLI":
-      return `Running: ${(config.command as string) || "..."}`;
-    case "API":
-      return `${(config.method as string) || "GET"} ${(config.endpoint as string) || "..."}`;
-    default:
-      return "Executing step";
-  }
+  const node = nodeMap.get(nodeId);
+  if (!node?.data) return nodeId;
+  return (node.data.label as string) ?? nodeId;
+}
+
+function getNodeType(
+  nodeId: string,
+  nodeMap: Map<string, Node<{ id: string; type: string; config?: Record<string, unknown>; label?: string }>>
+): string {
+  const node = nodeMap.get(nodeId);
+  if (!node?.data) return "";
+  return (node.data.type as string) ?? "";
 }
 
 export default function SkillSimulator({
@@ -57,105 +62,141 @@ export default function SkillSimulator({
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const runSimulation = useCallback(() => {
+  const runSimulation = useCallback(async () => {
     const skillNodes = nodes.filter(
       (n) => n.type === "skillNode" && n.data?.type
     );
     if (skillNodes.length === 0) {
-      setError("Add at least one skill node to simulate.");
+      setError("Add at least one skill node to run.");
       return;
     }
     setError(null);
     setLogs([]);
     setRunning(true);
-    abortRef.current = false;
     onActiveNodeChange(null);
 
-    const order = getExecutionOrder(
-      skillNodes.map((n) => ({ id: n.id })),
-      edges.map((e) => ({ source: e.source, target: e.target }))
-    );
+    const manifest = buildManifestFromGraph(nodes, edges);
     const nodeMap = new Map(skillNodes.map((n) => [n.id, n]));
 
-    let stepIndex = 0;
-    const runStep = () => {
-      if (abortRef.current) {
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
+
+    const addLog = (entry: Omit<LogEntry, "time">) => {
+      setLogs((prev) => [...prev, { ...entry, time: formatTime() }]);
+    };
+
+    try {
+      const res = await fetch(`${apiBase}/api/v1/skills/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(manifest),
+        signal: ac.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        setError(`Run failed: ${res.status} ${text || res.statusText}`);
         setRunning(false);
-        onActiveNodeChange(null);
         onSimulationComplete(false);
         return;
       }
-      if (stepIndex >= order.length) {
-        setLogs((prev) => [
-          ...prev,
-          {
-            time: formatTime(),
-            nodeId: "",
-            nodeLabel: "",
-            nodeType: "",
-            message: "Simulation complete.",
-            status: "success",
-          },
-        ]);
+      const reader = res.body?.getReader();
+      if (!reader) {
+        setError("No response body");
         setRunning(false);
-        onActiveNodeChange(null);
-        onSimulationComplete(true);
+        onSimulationComplete(false);
         return;
       }
-      const nodeId = order[stepIndex]!;
-      const node = nodeMap.get(nodeId);
-      if (!node?.data) {
-        stepIndex++;
-        setTimeout(runStep, 300);
-        return;
+      const dec = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += dec.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const event of events) {
+          const line = event.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          const raw = line.slice(6);
+          try {
+            const ev = JSON.parse(raw) as {
+              nodeId?: string;
+              message?: string;
+              status?: string;
+            };
+            const nodeId = ev.nodeId ?? "";
+            const message = ev.message ?? raw;
+            const status = (ev.status as "info" | "success" | "error") ?? "info";
+            if (nodeId) onActiveNodeChange(nodeId);
+            addLog({
+              nodeId,
+              nodeLabel: getNodeLabel(nodeId, nodeMap),
+              nodeType: getNodeType(nodeId, nodeMap),
+              message,
+              status,
+            });
+            if (message === "Execution complete." && status === "success") {
+              onActiveNodeChange(null);
+              onSimulationComplete(true);
+            }
+          } catch {
+            addLog({
+              nodeId: "",
+              nodeLabel: "",
+              nodeType: "",
+              message: raw,
+              status: "info",
+            });
+          }
+        }
       }
-      onActiveNodeChange(nodeId);
-      const label = (node.data.label ?? nodeId) as string;
-      const msg = getMockMessage(node.data.type as string, node.data.config ?? {});
-      setLogs((prev) => [
-        ...prev,
-        {
-          time: formatTime(),
-          nodeId,
-          nodeLabel: label,
-          nodeType: node.data.type as string,
-          message: msg,
+      if (buffer.trim()) {
+        const line = buffer.split("\n").find((l) => l.startsWith("data: "));
+        if (line) {
+          try {
+            const raw = line.slice(6);
+            const ev = JSON.parse(raw) as { nodeId?: string; message?: string; status?: string };
+            addLog({
+              nodeId: ev.nodeId ?? "",
+              nodeLabel: ev.nodeId ? getNodeLabel(ev.nodeId, nodeMap) : "",
+              nodeType: ev.nodeId ? getNodeType(ev.nodeId, nodeMap) : "",
+              message: ev.message ?? raw,
+              status: (ev.status as "info" | "success" | "error") ?? "info",
+            });
+          } catch {
+            addLog({ nodeId: "", nodeLabel: "", nodeType: "", message: buffer, status: "info" });
+          }
+        }
+      }
+      onActiveNodeChange(null);
+      onSimulationComplete(true);
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        addLog({
+          nodeId: "",
+          nodeLabel: "",
+          nodeType: "",
+          message: "Run stopped by user.",
           status: "info",
-        },
-      ]);
-      stepIndex++;
-      setTimeout(() => {
-        setLogs((prev) => {
-          const last = prev[prev.length - 1];
-          if (last && last.nodeId === nodeId)
-            return [
-              ...prev.slice(0, -1),
-              { ...last, status: "success" as const },
-            ];
-          return prev;
         });
-        setTimeout(runStep, 400);
-      }, STEP_DELAY_MS);
-    };
-
-    setLogs((prev) => [
-      ...prev,
-      {
-        time: formatTime(),
-        nodeId: "",
-        nodeLabel: "",
-        nodeType: "",
-        message: "Starting dry-run...",
-        status: "info",
-      },
-    ]);
-    setTimeout(runStep, 400);
+        onSimulationComplete(false);
+      } else {
+        setError(e instanceof Error ? e.message : "Run failed. Is the API running on port 8080?");
+        onSimulationComplete(false);
+      }
+    } finally {
+      setRunning(false);
+      onActiveNodeChange(null);
+      abortControllerRef.current = null;
+    }
   }, [nodes, edges, onActiveNodeChange, onSimulationComplete]);
 
   const stopSimulation = useCallback(() => {
-    abortRef.current = true;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
   }, []);
 
   if (!open) return null;
@@ -189,7 +230,7 @@ export default function SkillSimulator({
         <div className="flex gap-2 border-b border-zinc-800 p-3">
           <button
             type="button"
-            onClick={runSimulation}
+            onClick={() => void runSimulation()}
             disabled={running}
             className="flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
           >
@@ -213,6 +254,11 @@ export default function SkillSimulator({
           </div>
         )}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="px-4 py-2 border-b border-zinc-800 bg-zinc-800/30">
+            <p className="text-xs text-zinc-400">
+              Execution Environment: Local Sandbox. Note: BROWSER nodes are currently simulated for safety.
+            </p>
+          </div>
           <p className="px-4 py-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
             Console Output
           </p>
@@ -220,7 +266,7 @@ export default function SkillSimulator({
             <div className="p-3 space-y-1.5">
               {logs.length === 0 && (
                 <p className="text-zinc-600">
-                  Click &quot;Run Simulation&quot; to dry-run your skill chain.
+                  Click &quot;Run Simulation&quot; to run your skill chain. Logs stream in real time from the API.
                 </p>
               )}
               {logs.map((entry, i) => (

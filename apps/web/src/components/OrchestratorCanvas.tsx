@@ -78,8 +78,8 @@ const OrchestratorCanvas = forwardRef<HTMLDivElement, OrchestratorCanvasProps>(
     }, []);
 
     return (
-      <div ref={ref} className="relative w-full flex-1 min-h-0 bg-zinc-950" style={{ minHeight: 200 }}>
-        <div className="absolute inset-0" onDrop={handleDrop} onDragOver={handleDragOver}>
+      <div ref={ref} className="relative w-full flex-1 min-h-0 min-w-0 overflow-hidden bg-zinc-950" style={{ minHeight: 200 }}>
+        <div className="absolute inset-0 min-w-0 overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
