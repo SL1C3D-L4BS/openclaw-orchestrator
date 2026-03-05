@@ -1,0 +1,11 @@
+{
+  "name": "openclaw-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "cd apps/api && go run .",
+    "dev:web": "cd apps/web && npm run dev",
+    "build:api": "cd apps/api && go build .",
+    "build:web": "cd apps/web && npm run build"
+  }
+}

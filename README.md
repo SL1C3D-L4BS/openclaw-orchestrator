@@ -17,9 +17,22 @@ OpenClaw skills are currently manually coded in Python or JSON, leading to frequ
 * **Skill Simulator:** Dry-run your chains in a sandboxed environment before deployment.
 
 ## 📦 Quickstart
-```bash
-# Start the Orchestrator
-docker-compose up -d
 
-# Navigate to localhost:3000 to start building your first skill.
+### Option A: Docker
+```bash
+# Build and start API + Web (rebuild so API includes /api/v1/skills/templates)
+docker-compose up --build -d
+
+# Open http://localhost:3000 for the app, http://localhost:3000/api-playground for the API Playground.
 ```
+
+### Option B: Local development
+```bash
+# Terminal 1 — API (must be running for templates & validate/export)
+npm run dev:api
+
+# Terminal 2 — Web
+npm run dev:web
+```
+
+Then open **http://localhost:3000/api-playground**. The API runs on **http://localhost:8080**; the playground fetches Verified Skill Templates from it and lets you validate/export manifests.
