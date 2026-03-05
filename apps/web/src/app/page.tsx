@@ -16,20 +16,10 @@ export default function Home() {
             Open Visual Builder
           </a>
           <a
-            href="http://localhost:8080/api/v1/skills/validate"
+            href="/api-playground"
             className="rounded-full border border-zinc-600 px-6 py-3 font-medium transition-colors hover:bg-zinc-800"
-            target="_blank"
-            rel="noopener noreferrer"
           >
-            API: validate
-          </a>
-          <a
-            href="http://localhost:8080/api/v1/skills/export"
-            className="rounded-full border border-zinc-600 px-6 py-3 font-medium transition-colors hover:bg-zinc-800"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            API: export
+            API Playground
           </a>
         </div>
         <p className="text-sm text-zinc-500">

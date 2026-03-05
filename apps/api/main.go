@@ -16,6 +16,22 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
+	// Root and health — so opening http://localhost:8080 in a browser shows something
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"service": "OpenClaw Skill Orchestrator API",
+			"version": "1.0",
+			"endpoints": fiber.Map{
+				"POST /api/v1/skills/validate": "Validate a skill manifest (JSON body)",
+				"POST /api/v1/skills/export":  "Export signed JSONL (JSON body)",
+			},
+			"docs": "Use the web app at /api-playground to try the API.",
+		})
+	})
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok"})
+	})
+
 	api := app.Group("/api/v1")
 	skills := api.Group("/skills")
 
