@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { validateSkillChain, exportSkillChain, downloadBlob } from "@/lib/api";
 import type { SkillManifest, ValidateResult } from "@/types/skill";
 
@@ -26,6 +27,7 @@ const SAMPLE_MANIFEST: SkillManifest = {
 const initialJson = JSON.stringify(SAMPLE_MANIFEST, null, 2);
 
 export default function ApiPlaygroundPage() {
+  const searchParams = useSearchParams();
   const [manifestJson, setManifestJson] = useState<string>(initialJson);
   const [templates, setTemplates] = useState<SkillManifest[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -38,6 +40,7 @@ export default function ApiPlaygroundPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const appliedTemplateParam = useRef(false);
 
   const apiBase =
     typeof window !== "undefined"
@@ -76,6 +79,30 @@ export default function ApiPlaygroundPage() {
       cancelled = true;
     };
   }, [apiBase]);
+
+  // Preload template when navigating from Community Skills with ?template=Skill Name
+  useEffect(() => {
+    if (templatesLoading || appliedTemplateParam.current || templates.length === 0) return;
+    const templateName = searchParams.get("template");
+    if (!templateName) return;
+    const decoded = decodeURIComponent(templateName);
+    const manifest = templates.find((t) => t.name === decoded);
+    if (manifest) {
+      setManifestJson(JSON.stringify(manifest, null, 2));
+      setActiveTemplateName(manifest.name);
+      setValidateResult(null);
+      setValidateError(null);
+      setExportSuccess(false);
+      setExportError(null);
+      setParseError(null);
+      appliedTemplateParam.current = true;
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("template");
+        window.history.replaceState({}, "", url.pathname + url.search);
+      }
+    }
+  }, [templatesLoading, templates, searchParams]);
 
   function parseManifest(): SkillManifest | null {
     setParseError(null);
