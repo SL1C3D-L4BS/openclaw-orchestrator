@@ -1,37 +1,59 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { validateSkillChain, exportSkillChain, downloadBlob } from "@/lib/api";
 import type { SkillManifest, ValidateResult } from "@/types/skill";
 
-const SAMPLE_MANIFEST: SkillManifest = {
-  name: "Sample Skill",
-  version: "0.1.0",
-  nodes: [
-    {
-      id: "1",
-      type: "BROWSER",
-      config: { url: "https://example.com" },
-      next_nodes: ["2"],
-    },
-    {
-      id: "2",
-      type: "API",
-      config: { endpoint: "/api/parse", method: "POST" },
-      next_nodes: [],
-    },
-  ],
-};
+// Single source of truth for API Playground sidebar: 988 clinical workflows only (no legacy skills).
+const CLINICAL_WORKFLOW_TEMPLATES: SkillManifest[] = [
+  {
+    name: "988 Intake → Dispatch",
+    version: "1.0.0",
+    nodes: [
+      { id: "intake-1", type: "API", config: { subtype: "988_intake", endpoint: "/988/intake", method: "POST" }, next_nodes: ["dispatch-1"] },
+      { id: "dispatch-1", type: "API", config: { subtype: "dispatch", endpoint: "/dispatch", method: "POST" }, next_nodes: [] },
+    ],
+    signed_by: "Vericore",
+  },
+  {
+    name: "988 Intake → Resolution",
+    version: "1.0.0",
+    nodes: [
+      { id: "intake-1", type: "API", config: { subtype: "988_intake", endpoint: "/988/intake", method: "POST" }, next_nodes: ["resolution-1"] },
+      { id: "resolution-1", type: "API", config: { subtype: "resolution", endpoint: "/resolution", method: "POST" }, next_nodes: [] },
+    ],
+    signed_by: "Vericore",
+  },
+  {
+    name: "988 Intake → Triage → Dispatch",
+    version: "1.0.0",
+    nodes: [
+      { id: "intake-1", type: "API", config: { subtype: "988_intake", endpoint: "/988/intake", method: "POST" }, next_nodes: ["triage-1"] },
+      { id: "triage-1", type: "API", config: { subtype: "triage", endpoint: "/triage", method: "POST" }, next_nodes: ["dispatch-1"] },
+      { id: "dispatch-1", type: "API", config: { subtype: "dispatch", endpoint: "/dispatch", method: "POST" }, next_nodes: [] },
+    ],
+    signed_by: "Vericore",
+  },
+  {
+    name: "988 Intake → Triage → Resolution",
+    version: "1.0.0",
+    nodes: [
+      { id: "intake-1", type: "API", config: { subtype: "988_intake", endpoint: "/988/intake", method: "POST" }, next_nodes: ["triage-1"] },
+      { id: "triage-1", type: "API", config: { subtype: "triage", endpoint: "/triage", method: "POST" }, next_nodes: ["resolution-1"] },
+      { id: "resolution-1", type: "API", config: { subtype: "resolution", endpoint: "/resolution", method: "POST" }, next_nodes: [] },
+    ],
+    signed_by: "Vericore",
+  },
+];
 
+const SAMPLE_MANIFEST = CLINICAL_WORKFLOW_TEMPLATES[0]!;
 const initialJson = JSON.stringify(SAMPLE_MANIFEST, null, 2);
 
-export default function ApiPlaygroundPage() {
+function ApiPlaygroundContent() {
   const searchParams = useSearchParams();
   const [manifestJson, setManifestJson] = useState<string>(initialJson);
-  const [templates, setTemplates] = useState<SkillManifest[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(true);
-  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [templates] = useState<SkillManifest[]>(() => CLINICAL_WORKFLOW_TEMPLATES);
   const [activeTemplateName, setActiveTemplateName] = useState<string | null>(null);
   const [validateResult, setValidateResult] = useState<ValidateResult | null>(null);
   const [validateLoading, setValidateLoading] = useState(false);
@@ -47,42 +69,9 @@ export default function ApiPlaygroundPage() {
       ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080")
       : "http://localhost:8080";
 
+  // Preload template when navigating from workflow seeds with ?template=Name
   useEffect(() => {
-    let cancelled = false;
-    setTemplatesLoading(true);
-    setTemplatesError(null);
-    fetch(`${apiBase}/api/v1/skills/templates`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: unknown) => {
-        if (cancelled) return;
-        if (Array.isArray(data)) {
-          setTemplates(data as SkillManifest[]);
-        } else {
-          setTemplates([]);
-          setTemplatesError("Templates response was not an array.");
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setTemplatesError(
-            err instanceof Error ? err.message : "Failed to load templates. Is the API running?"
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setTemplatesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [apiBase]);
-
-  // Preload template when navigating from Community Skills with ?template=Skill Name
-  useEffect(() => {
-    if (templatesLoading || appliedTemplateParam.current || templates.length === 0) return;
+    if (appliedTemplateParam.current) return;
     const templateName = searchParams.get("template");
     if (!templateName) return;
     const decoded = decodeURIComponent(templateName);
@@ -102,7 +91,7 @@ export default function ApiPlaygroundPage() {
         window.history.replaceState({}, "", url.pathname + url.search);
       }
     }
-  }, [templatesLoading, templates, searchParams]);
+  }, [templates, searchParams]);
 
   function parseManifest(): SkillManifest | null {
     setParseError(null);
@@ -169,20 +158,12 @@ export default function ApiPlaygroundPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
       <div className="flex flex-1 min-h-0 w-full">
-        {/* Left sidebar — Verified Skill Templates */}
+        {/* Left sidebar — 988 clinical workflow templates from API */}
         <aside className="w-[25%] min-w-[200px] border-r border-zinc-800 bg-zinc-900/30 flex flex-col p-4">
-          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-3">
-            Verified Skill Templates
+          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-1">
+            988 Clinical Workflows
           </h2>
-          {templatesLoading && (
-            <p className="text-zinc-500 text-sm">Loading templates…</p>
-          )}
-          {templatesError && (
-            <p className="text-amber-500/90 text-sm mb-2">{templatesError}</p>
-          )}
-          {!templatesLoading && templates.length === 0 && !templatesError && (
-            <p className="text-zinc-500 text-sm">No templates available.</p>
-          )}
+          <p className="text-xs text-zinc-500 mb-3">Verified workflow templates</p>
           <div className="flex flex-col gap-1.5">
             {templates.map((t) => (
               <button
@@ -211,7 +192,7 @@ export default function ApiPlaygroundPage() {
             <div>
               <h1 className="text-2xl font-bold text-zinc-100">API Playground</h1>
               <p className="text-zinc-400 mt-1">
-                Try the skill API with a template or your own manifest. API at{" "}
+                Validate and export 988 clinical workflows. Pick a template or paste your own manifest. API at{" "}
                 <code className="text-violet-400">{apiBase}</code>.
               </p>
             </div>
@@ -296,5 +277,19 @@ export default function ApiPlaygroundPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function ApiPlaygroundPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
+          <p className="text-zinc-500">Loading…</p>
+        </div>
+      }
+    >
+      <ApiPlaygroundContent />
+    </Suspense>
   );
 }

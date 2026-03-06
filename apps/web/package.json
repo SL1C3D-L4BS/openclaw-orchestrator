@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "mkdir -p public && cp node_modules/sql.js/dist/sql-wasm-browser.wasm public/sql-wasm.wasm 2>/dev/null || true"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.0",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-virtual": "^3.13.19",
     "@xyflow/react": "^12.10.1",
@@ -18,7 +20,9 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-resizable-panels": "^4.7.1"
+    "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^4.7.1",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

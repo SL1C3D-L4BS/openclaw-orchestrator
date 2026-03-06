@@ -266,7 +266,7 @@ export default function SkillSimulator({
             <div className="p-3 space-y-1.5">
               {logs.length === 0 && (
                 <p className="text-zinc-600">
-                  Click &quot;Run Simulation&quot; to run your skill chain. Logs stream in real time from the API.
+                  Click &quot;Run Simulation&quot; to run your workflow. Logs stream in real time from the API.
                 </p>
               )}
               {logs.map((entry, i) => (

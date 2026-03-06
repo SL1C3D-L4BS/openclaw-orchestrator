@@ -6,7 +6,7 @@ export default function Home() {
           OpenClaw Skill Orchestrator
         </h1>
         <p className="text-lg text-zinc-400">
-          The visual IDE for standardized OpenClaw agent skills. Chain API, CLI, and browser nodes—export signed JSONL for <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">openclaw-agent --skills=./my_skill.jsonl</code>.
+          The visual IDE for 988 clinical workflows. Build intake → triage → dispatch flows, validate and export signed JSONL for <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm">openclaw-agent --skills=./my_skill.jsonl</code>.
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           <a
@@ -21,9 +21,27 @@ export default function Home() {
           >
             API Playground
           </a>
+          <a
+            href="/mobile"
+            className="rounded-full border border-zinc-600 px-6 py-3 font-medium transition-colors hover:bg-zinc-800"
+          >
+            Mobile Crisis (PWA)
+          </a>
+          <a
+            href="/clinical/crisis"
+            className="rounded-full border border-zinc-600 px-6 py-3 font-medium transition-colors hover:bg-zinc-800"
+          >
+            Crisis IDE
+          </a>
+          <a
+            href="/clinical/onboarding"
+            className="rounded-full border border-zinc-600 px-6 py-3 font-medium transition-colors hover:bg-zinc-800"
+          >
+            Training &amp; Onboarding
+          </a>
         </div>
         <p className="text-sm text-zinc-500">
-          Phase 1: Go/Fiber API live. React-Flow visual builder in Phase 2.
+          SL1C3D-L4BS Clinical Control Plane — durable persistence, clinical validation, JWT RBAC.
         </p>
       </main>
     </div>

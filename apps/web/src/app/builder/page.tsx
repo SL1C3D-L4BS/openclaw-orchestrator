@@ -10,21 +10,24 @@ import OrchestratorCanvas from "@/components/OrchestratorCanvas";
 import { SimulationProvider } from "@/contexts/SimulationContext";
 import { getSkillWorkflow, type CommunitySkill } from "@/data/communitySkills";
 import { workflowToReactFlow } from "@/lib/workflow";
+import type { SkillNodeData } from "@/types/skill";
 import type { Node, Edge } from "@xyflow/react";
 
 const STORAGE_KEY = "openclaw_draft_graph";
 
-/** Minimal OSINT-Prospector style first-run graph: BROWSER → API. */
-const firstRunNodes: Node[] = [
+type SkillNode = Node<SkillNodeData>;
+
+/** Default graph: minimal 988-compliant flow (intake → dispatch). */
+const firstRunNodes: SkillNode[] = [
   {
     id: "1",
     type: "skillNode",
     position: { x: 100, y: 120 },
     data: {
       id: "1",
-      type: "BROWSER",
-      config: { url: "https://www.linkedin.com/sales/search/people", action: "scrape" },
-      label: "Scrape prospects",
+      type: "API",
+      config: { subtype: "988_intake", endpoint: "/988/intake", method: "POST" },
+      label: "988 Intake",
     },
   },
   {
@@ -34,15 +37,15 @@ const firstRunNodes: Node[] = [
     data: {
       id: "2",
       type: "API",
-      config: { endpoint: "https://api.openai.com/v1/chat/completions", method: "POST", task: "write_outreach_email" },
-      label: "Enrich & send",
+      config: { subtype: "dispatch", endpoint: "/dispatch", method: "POST" },
+      label: "Dispatch",
     },
   },
 ];
 const firstRunEdges: Edge[] = [{ id: "e-1-2", source: "1", target: "2" }];
 
 function BuilderContent() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(firstRunNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<SkillNode>(firstRunNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(firstRunEdges);
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
@@ -57,7 +60,7 @@ function BuilderContent() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as { nodes?: Node[]; edges?: Edge[] };
+        const parsed = JSON.parse(raw) as { nodes?: SkillNode[]; edges?: Edge[] };
         if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0 && Array.isArray(parsed.edges)) {
           setNodes(parsed.nodes);
           setEdges(parsed.edges);
@@ -114,7 +117,7 @@ function BuilderContent() {
         {showWelcomeBanner && (
           <div className="flex items-center justify-between gap-4 border-b border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm text-zinc-200">
             <p>
-              Welcome to the Orchestrator. We&apos;ve loaded a sample skill to get you started. Your progress will auto-save locally.
+              Welcome to the Orchestrator. We&apos;ve loaded a sample 988 workflow to get you started. Your progress will auto-save locally.
             </p>
             <button
               type="button"
@@ -127,10 +130,10 @@ function BuilderContent() {
           </div>
         )}
         <VericoreHeader
-          nodes={nodes}
+          nodes={nodes as Node<SkillNodeData>[]}
           edges={edges}
-          manifestName="My Skill"
-          manifestVersion="0.1.0"
+          manifestName="My Workflow"
+          manifestVersion="1.0.0"
           onOpenSimulator={() => setSimulatorOpen(true)}
           simulationSuccess={simulationSuccess}
           flowContainerRef={flowContainerRef}

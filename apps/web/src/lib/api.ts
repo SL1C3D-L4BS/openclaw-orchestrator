@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { SkillManifest, ValidateResult } from "@/types/skill";
+import { getAuthHeaders } from "@/lib/auth-store";
 
 const API_BASE =
   typeof window !== "undefined"
@@ -7,6 +8,12 @@ const API_BASE =
     : "http://localhost:8080";
 
 const client = axios.create({ baseURL: API_BASE, timeout: 15_000 });
+
+client.interceptors.request.use((config) => {
+  const auth = getAuthHeaders();
+  if (auth.Authorization) config.headers.set("Authorization", auth.Authorization);
+  return config;
+});
 
 export async function validateSkillChain(
   manifest: SkillManifest

@@ -45,7 +45,7 @@ export default function SkillMarketplace({ onLoadWorkflow }: SkillMarketplacePro
   return (
     <aside className="h-full flex flex-col border-r border-zinc-800 bg-zinc-900/50 min-w-[280px] w-full">
       <div className="px-4 py-3 border-b border-zinc-800 shrink-0">
-        <h2 className="text-sm font-semibold text-zinc-200">Community Skills</h2>
+        <h2 className="text-sm font-semibold text-zinc-200">Clinical Workflow Seeds</h2>
         <p className="text-xs text-zinc-500 mt-0.5">Drag onto canvas or select and add. Prebuilt nodes &amp; workflows.</p>
       </div>
       <div className="shrink-0 px-2 pt-2 pb-1">
@@ -55,9 +55,9 @@ export default function SkillMarketplace({ onLoadWorkflow }: SkillMarketplacePro
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search skills..."
+            placeholder="Search workflows..."
             className="w-full pl-8 pr-3 py-2 text-sm bg-zinc-950 border border-zinc-700 rounded-lg text-zinc-200 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-shadow"
-            aria-label="Search community skills"
+            aria-label="Search clinical workflow seeds"
           />
         </div>
       </div>
@@ -173,6 +173,7 @@ export default function SkillMarketplace({ onLoadWorkflow }: SkillMarketplacePro
             )}
             <Link
               href={`/api-playground?template=${encodeURIComponent(selectedSkill.name)}`}
+              title="Open this workflow in the API Playground"
               className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -183,7 +184,7 @@ export default function SkillMarketplace({ onLoadWorkflow }: SkillMarketplacePro
       )}
       <div className="p-2 border-t border-zinc-800 shrink-0">
         <p className="text-xs text-zinc-500 text-center">
-          Skills signed by <strong className="text-violet-400">Vericore</strong> are PQC-verified and tamper-evident.
+          Workflows signed by <strong className="text-violet-400">Vericore</strong> are PQC-verified and tamper-evident.
         </p>
       </div>
     </aside>

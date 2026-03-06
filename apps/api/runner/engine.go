@@ -13,6 +13,13 @@ import (
 	"github.com/vericore/openclaw-orchestrator/models"
 )
 
+// CommandAllowlist restricts CLI execution to safe commands only. Key = executable name (e.g. "echo").
+var CommandAllowlist = map[string]bool{
+	"echo": true,
+	"ping": true,
+	"dump": true, // DUMP CLI when installed
+}
+
 // LogEvent is sent over the channel for SSE. JSON-serialized so the frontend can parse nodeId and message.
 type LogEvent struct {
 	NodeID  string `json:"nodeId"`
@@ -143,8 +150,18 @@ func runCLINode(node *models.SkillNode, logChan chan<- string) {
 		emit(logChan, node.ID, "CLI node missing command in config", "error")
 		return
 	}
-	log.Printf("[runner] WARNING: Executing CLI command locally. Only run manifests you trust on your own machine.")
-	emit(logChan, node.ID, fmt.Sprintf("Running: %s (local execution)", command), "info")
+	// Resolve executable name (first token) for allowlist check
+	parts := strings.Fields(strings.TrimSpace(command))
+	exe := command
+	if len(parts) > 0 {
+		exe = parts[0]
+	}
+	if !CommandAllowlist[exe] {
+		emit(logChan, node.ID, fmt.Sprintf("security: CLI command not allowed (executable %q not in allowlist)", exe), "error")
+		return
+	}
+	log.Printf("[runner] Executing allowlisted CLI: %s", exe)
+	emit(logChan, node.ID, fmt.Sprintf("Running: %s (allowlisted)", command), "info")
 	var args []string
 	if a, ok := config["args"].([]interface{}); ok {
 		for _, v := range a {

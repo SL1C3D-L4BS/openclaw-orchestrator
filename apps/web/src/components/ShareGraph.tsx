@@ -5,7 +5,7 @@ import { Share2 } from "lucide-react";
 import { captureElementAsPng } from "@/lib/snapshot";
 
 const TWEET_TEMPLATE =
-  "Just built a PQC-Verified Skill for @OpenClaw using Vericore OS. 🕹️🛡️ #OpenClaw #AI #Vericore";
+  "Just built a PQC-Verified 988 workflow for @OpenClaw using Vericore OS. 🕹️🛡️ #OpenClaw #988 #Vericore";
 
 export function getTweetUrl(text: string = TWEET_TEMPLATE): string {
   return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;

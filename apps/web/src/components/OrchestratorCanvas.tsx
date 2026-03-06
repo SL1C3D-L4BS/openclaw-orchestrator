@@ -26,25 +26,27 @@ export const initialCanvasNodes: Node<SkillNodeData, "skillNode">[] = [
     id: "1",
     type: "skillNode",
     position: { x: 100, y: 100 },
-    data: { id: "1", type: "BROWSER", config: { url: "https://example.com" }, label: "Open page" },
+    data: { id: "1", type: "API", config: { subtype: "988_intake", endpoint: "/988/intake", method: "POST" }, label: "988 Intake" },
   },
   {
     id: "2",
     type: "skillNode",
     position: { x: 400, y: 100 },
-    data: { id: "2", type: "API", config: { endpoint: "/api/parse", method: "POST" }, label: "Parse" },
+    data: { id: "2", type: "API", config: { subtype: "dispatch", endpoint: "/dispatch", method: "POST" }, label: "Dispatch" },
   },
 ];
 
 export const initialCanvasEdges: Edge[] = [];
 
+type SkillNode = Node<SkillNodeData>;
+
 interface OrchestratorCanvasProps {
-  nodes: Node[];
+  nodes: SkillNode[];
   edges: Edge[];
-  onNodesChange: OnNodesChange;
+  onNodesChange: OnNodesChange<SkillNode>;
   onEdgesChange: OnEdgesChange;
   onConnect: (connection: Connection) => void;
-  /** When a community skill is dropped on the canvas, add its workflow at the drop position. */
+  /** When a workflow seed is dropped on the canvas, add its workflow at the drop position. */
   onDropSkill?: (skill: CommunitySkill, position: { x: number; y: number }) => void;
 }
 

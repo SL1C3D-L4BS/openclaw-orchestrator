@@ -1,4 +1,6 @@
 # API binary (from go build .)
 apps/api/openclaw-orchestrator
+# SQLite persistence (created at runtime)
+data/
 # pnpm
 .pnpm-store/
